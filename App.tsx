@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Role, User, Dog, WalkRequest, Application } from './types';
-import Navigation from './components/Navigation';
-import OwnerDashboard from './pages/OwnerDashboard';
-import WalkerDashboard from './pages/WalkerDashboard';
-import RequestCreate from './pages/RequestCreate';
-import Landing from './pages/Landing';
+import { Role, User, Dog, WalkRequest, Application } from './types.ts';
+import Navigation from './components/Navigation.tsx';
+import OwnerDashboard from './pages/OwnerDashboard.tsx';
+import WalkerDashboard from './pages/WalkerDashboard.tsx';
+import RequestCreate from './pages/RequestCreate.tsx';
+import Landing from './pages/Landing.tsx';
 
 // Initial Mock Data
 const MOCK_USERS: User[] = [

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { WalkStatus, ApplicationStatus } from '../types';
+import { WalkStatus, ApplicationStatus } from '../types.ts';
 
 interface Props {
   status: WalkStatus | ApplicationStatus;

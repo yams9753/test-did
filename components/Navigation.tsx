@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { User, Role } from '../types';
+import { User, Role } from '../types.ts';
 
 interface Props {
   user: User | null;

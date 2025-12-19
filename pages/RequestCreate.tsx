@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Dog, WalkStatus, WalkRequest } from '../types';
+import { User, Dog, WalkStatus, WalkRequest } from '../types.ts';
 
 interface Props {
   user: User;

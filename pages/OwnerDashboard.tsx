@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, WalkRequest, Application, WalkStatus, ApplicationStatus, Dog } from '../types';
-import StatusBadge from '../components/StatusBadge';
+import { User, WalkRequest, Application, WalkStatus, ApplicationStatus, Dog } from '../types.ts';
+import StatusBadge from '../components/StatusBadge.tsx';
 
 interface Props {
   user: User;
@@ -25,10 +25,6 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, setRequ
 
   // Matching Logic (Simulation of the matching API)
   const handleAcceptApplication = (requestId: string, applicationId: string) => {
-    // 1. Update the accepted application to ACCEPTED
-    // 2. Update all other applications for this request to REJECTED
-    // 3. Update the request status to MATCHED
-    
     setApplications(prev => prev.map(app => {
       if (app.requestId === requestId) {
         return app.id === applicationId ? { ...app, status: ApplicationStatus.ACCEPTED } : { ...app, status: ApplicationStatus.REJECTED };

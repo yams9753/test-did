@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { User, WalkRequest, Application, WalkStatus, ApplicationStatus, Dog, Role } from '../types';
-import StatusBadge from '../components/StatusBadge';
+import { User, WalkRequest, Application, WalkStatus, ApplicationStatus, Dog, Role } from '../types.ts';
+import StatusBadge from '../components/StatusBadge.tsx';
 
 interface Props {
   user: User;

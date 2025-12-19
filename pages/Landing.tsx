@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, Role } from '../types';
+import { User, Role } from '../types.ts';
 
 interface Props {
   onLogin: (user: User) => void;
