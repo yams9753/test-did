@@ -1,0 +1,7 @@
+{
+  "name": "산책할래 (Sanchaek-hallae)",
+  "description": "하이퍼 로컬 반려견 산책 매칭 서비스. 견주와 산책러를 잇는 신뢰 기반의 플랫폼입니다.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
