@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User, Role } from '../types.ts';
 
 interface Props {
@@ -8,6 +9,14 @@ interface Props {
 }
 
 const Landing: React.FC<Props> = ({ onLogin, users }) => {
+  const navigate = useNavigate();
+
+  const handleUserSelect = (user: User) => {
+    onLogin(user);
+    const targetPath = user.role === Role.OWNER ? '/owner' : '/walker';
+    navigate(targetPath);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-center">
       <div className="w-24 h-24 bg-orange-500 rounded-3xl flex items-center justify-center text-white text-5xl mb-6 shadow-xl">
@@ -27,7 +36,7 @@ const Landing: React.FC<Props> = ({ onLogin, users }) => {
           {users.filter(u => u.role === Role.OWNER).map(user => (
             <button
               key={user.id}
-              onClick={() => onLogin(user)}
+              onClick={() => handleUserSelect(user)}
               className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors shadow-md shadow-blue-200"
             >
               {user.nickname} 로그인
@@ -44,7 +53,7 @@ const Landing: React.FC<Props> = ({ onLogin, users }) => {
             {users.filter(u => u.role === Role.WALKER).map(user => (
               <button
                 key={user.id}
-                onClick={() => onLogin(user)}
+                onClick={() => handleUserSelect(user)}
                 className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-colors shadow-md shadow-green-200"
               >
                 {user.nickname} 로그인

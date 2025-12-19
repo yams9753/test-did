@@ -7,6 +7,9 @@ import OwnerDashboard from './pages/OwnerDashboard.tsx';
 import WalkerDashboard from './pages/WalkerDashboard.tsx';
 import RequestCreate from './pages/RequestCreate.tsx';
 import Landing from './pages/Landing.tsx';
+import Profile from './pages/Profile.tsx';
+import WalkListPage from './pages/WalkListPage.tsx';
+import HistoryPage from './pages/HistoryPage.tsx';
 
 // Initial Mock Data
 const MOCK_USERS: User[] = [
@@ -17,6 +20,7 @@ const MOCK_USERS: User[] = [
 
 const MOCK_DOGS: Dog[] = [
   { id: 'd1', ownerId: 'u1', name: '초코', breed: '푸들', size: 'S' as any, notes: '사람을 아주 좋아해요!' },
+  { id: 'd2', ownerId: 'u1', name: '쿠키', breed: '비숑', size: 'M' as any, notes: '조금 겁이 많아요.' },
 ];
 
 function App() {
@@ -31,6 +35,9 @@ function App() {
     const savedApps = localStorage.getItem('applications');
     if (savedRequests) setRequests(JSON.parse(savedRequests));
     if (savedApps) setApplications(JSON.parse(savedApps));
+    
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) setCurrentUser(JSON.parse(savedUser));
   }, []);
 
   useEffect(() => {
@@ -38,17 +45,33 @@ function App() {
     localStorage.setItem('applications', JSON.stringify(applications));
   }, [requests, applications]);
 
-  const handleLogin = (user: User) => setCurrentUser(user);
-  const handleLogout = () => setCurrentUser(null);
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem('currentUser', JSON.stringify(user));
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUser');
+  };
 
   return (
     <HashRouter>
-      <div className="min-h-screen bg-slate-50 flex flex-col pb-20 md:pb-0">
+      <div className="min-h-screen bg-slate-50 flex flex-col">
         <Navigation user={currentUser} onLogout={handleLogout} />
         
-        <main className="flex-grow container mx-auto px-4 py-6 max-w-4xl">
+        <main className="flex-grow container mx-auto px-4 py-8 max-w-5xl">
           <Routes>
-            <Route path="/" element={<Landing onLogin={handleLogin} users={MOCK_USERS} />} />
+            <Route 
+              path="/" 
+              element={
+                currentUser ? (
+                  <Navigate to={currentUser.role === Role.OWNER ? "/owner" : "/walker"} replace />
+                ) : (
+                  <Landing onLogin={handleLogin} users={MOCK_USERS} />
+                )
+              } 
+            />
             
             <Route 
               path="/owner" 
@@ -61,6 +84,7 @@ function App() {
                   setRequests={setRequests}
                   setApplications={setApplications}
                   dogs={dogs}
+                  allUsers={MOCK_USERS}
                 /> : <Navigate to="/" />
               } 
             />
@@ -88,6 +112,38 @@ function App() {
                   user={currentUser} 
                   dogs={dogs}
                   onSubmit={(newReq) => setRequests(prev => [newReq, ...prev])}
+                /> : <Navigate to="/" />
+              } 
+            />
+
+            <Route 
+              path="/profile" 
+              element={currentUser ? <Profile user={currentUser} onLogout={handleLogout} /> : <Navigate to="/" />} 
+            />
+
+            <Route 
+              path="/list" 
+              element={
+                currentUser ? 
+                <WalkListPage 
+                  user={currentUser} 
+                  requests={requests} 
+                  applications={applications}
+                  dogs={dogs}
+                  setRequests={setRequests}
+                /> : <Navigate to="/" />
+              } 
+            />
+            
+            <Route 
+              path="/history" 
+              element={
+                currentUser ? 
+                <HistoryPage 
+                  user={currentUser} 
+                  requests={requests} 
+                  applications={applications}
+                  dogs={dogs}
                 /> : <Navigate to="/" />
               } 
             />

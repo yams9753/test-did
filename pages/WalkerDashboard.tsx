@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
-import { User, WalkRequest, Application, WalkStatus, ApplicationStatus, Dog, Role } from '../types.ts';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { User, WalkRequest, Application, WalkStatus, Dog } from '../types.ts';
 import StatusBadge from '../components/StatusBadge.tsx';
 
 interface Props {
@@ -13,164 +14,141 @@ interface Props {
 }
 
 const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, setApplications, setRequests, dogs }) => {
-  const [view, setView] = useState<'FIND' | 'MY_WALKS'>('FIND');
-
-  // Filter requests that are OPEN and in the walker's region
-  const availableRequests = requests.filter(r => r.status === WalkStatus.OPEN && r.ownerId !== user.id);
-  
-  // My applications
   const myApplications = applications.filter(a => a.walkerId === user.id);
-  
-  // My matched/completed walks
-  const myWalks = requests.filter(req => {
-    const myAcceptedApp = myApplications.find(a => a.requestId === req.id && a.status === ApplicationStatus.ACCEPTED);
-    return !!myAcceptedApp;
-  });
+  const myMatchedWalks = requests.filter(req => 
+    myApplications.some(a => a.requestId === req.id && a.status === 'ACCEPTED' && req.status === WalkStatus.MATCHED)
+  );
+  const availableRequests = requests.filter(r => r.status === WalkStatus.OPEN && r.ownerId !== user.id);
+  const completedWalks = requests.filter(req => 
+    myApplications.some(a => a.requestId === req.id && a.status === 'ACCEPTED' && req.status === WalkStatus.COMPLETED)
+  );
+
+  const totalEarnings = completedWalks.reduce((acc, curr) => acc + curr.reward, 0);
 
   const handleApply = (requestId: string) => {
     if (myApplications.some(a => a.requestId === requestId)) {
       alert('이미 지원한 산책입니다.');
       return;
     }
-
     const newApp: Application = {
       id: `app_${Date.now()}`,
       requestId,
       walkerId: user.id,
-      status: ApplicationStatus.PENDING,
+      status: 'PENDING' as any,
       createdAt: new Date().toISOString()
     };
-
     setApplications(prev => [...prev, newApp]);
-    alert('지원이 완료되었습니다! 견주의 수락을 기다려주세요.');
+    alert('지원 완료! 견주님의 선택을 기다려주세요.');
   };
 
   const handleComplete = (requestId: string) => {
     setRequests(prev => prev.map(req => 
       req.id === requestId ? { ...req, status: WalkStatus.COMPLETED } : req
     ));
-    alert('산책 완료 처리가 되었습니다. 정산 내역을 확인해 주세요!');
+    alert('산책 완료! 정산이 진행됩니다.');
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-end">
+    <div className="space-y-8">
+      {/* 1. Header & Stats */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">산책러 서비스</h1>
-          <p className="text-gray-500">우리 동네 강아지들과 행복한 시간을 보내세요.</p>
+          <h1 className="text-3xl font-black text-slate-800">안녕하세요, {user.nickname} 프로님!</h1>
+          <p className="text-slate-500 mt-1">오늘도 강아지들과 행복한 발걸음 되세요. 🐾</p>
+        </div>
+        <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-6">
+          <div className="text-center">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">총 수입</p>
+            <p className="text-xl font-black text-orange-500">{totalEarnings.toLocaleString()}원</p>
+          </div>
+          <div className="w-[1px] h-8 bg-slate-100"></div>
+          <div className="text-center">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">산책 횟수</p>
+            <p className="text-xl font-black text-slate-800">{completedWalks.length}회</p>
+          </div>
         </div>
       </div>
 
-      <div className="flex border-b">
-        <button 
-          onClick={() => setView('FIND')}
-          className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${view === 'FIND' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-        >
-          동네 산책 찾기
-        </button>
-        <button 
-          onClick={() => setView('MY_WALKS')}
-          className={`px-6 py-3 font-semibold text-sm transition-colors border-b-2 ${view === 'MY_WALKS' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
-        >
-          내 산책 현황 ({myWalks.length})
-        </button>
-      </div>
-
-      {view === 'FIND' ? (
-        <div className="grid gap-4">
-          {availableRequests.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-100">
-              <p className="text-gray-400">현재 동네에 등록된 산책 예약이 없습니다.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* 2. 확정된 일정 (Matched) */}
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <i className="fas fa-calendar-check text-green-500"></i>
+            오늘의 산책 일정
+          </h2>
+          {myMatchedWalks.length === 0 ? (
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl py-12 text-center">
+              <p className="text-slate-400 font-medium">확정된 산책 일정이 없습니다.</p>
+              <Link to="/list" className="text-sm text-green-600 font-bold mt-2 inline-block">주변 산책 찾아보기</Link>
             </div>
           ) : (
-            availableRequests.map(req => {
-              const dog = dogs.find(d => d.id === req.dogId);
-              const alreadyApplied = myApplications.some(a => a.requestId === req.id);
-
-              return (
-                <div key={req.id} className="bg-white rounded-2xl shadow-sm border p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                  <div className="flex items-center gap-4 flex-grow">
-                    <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 text-2xl">
-                      <i className="fas fa-dog"></i>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-gray-800">{dog?.name}</h3>
-                        <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500">{dog?.breed}</span>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        <i className="far fa-calendar-alt mr-1"></i>
-                        {new Date(req.scheduledAt).toLocaleDateString()} {new Date(req.scheduledAt).getHours()}:00 · {req.duration}분
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1 line-clamp-1">{dog?.notes}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="w-full sm:w-auto flex flex-col sm:items-end gap-2">
-                    <div className="text-lg font-black text-green-600">{req.reward.toLocaleString()}원</div>
-                    <button 
-                      disabled={alreadyApplied}
-                      onClick={() => handleApply(req.id)}
-                      className={`w-full sm:w-32 py-2 font-bold rounded-xl transition-all shadow-sm ${alreadyApplied ? 'bg-gray-100 text-gray-400' : 'bg-green-500 hover:bg-green-600 text-white shadow-green-100'}`}
-                    >
-                      {alreadyApplied ? '지원 완료' : '지원하기'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {myWalks.length === 0 ? (
-            <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-gray-100">
-              <p className="text-gray-400">진행 중이거나 완료된 산책이 없습니다.</p>
-            </div>
-          ) : (
-            myWalks.map(req => {
+            myMatchedWalks.map(req => {
               const dog = dogs.find(d => d.id === req.dogId);
               return (
-                <div key={req.id} className="bg-white rounded-2xl shadow-sm border p-5">
-                  <div className="flex justify-between mb-4">
-                    <div className="flex gap-3">
-                      <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-green-500">
-                        <i className="fas fa-paw"></i>
-                      </div>
+                <div key={req.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-2xl">🐶</div>
                       <div>
-                        <h3 className="font-bold text-gray-800">{dog?.name}와의 산책</h3>
-                        <p className="text-xs text-gray-500">{new Date(req.scheduledAt).toLocaleString()}</p>
+                        <h4 className="font-bold text-slate-800">{dog?.name} · {req.duration}분</h4>
+                        <p className="text-sm text-slate-500">{new Date(req.scheduledAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                       </div>
                     </div>
                     <StatusBadge status={req.status} />
                   </div>
-                  
-                  <div className="bg-slate-50 p-3 rounded-xl mb-4 flex justify-between items-center">
-                    <span className="text-sm text-gray-600">산책 보수</span>
-                    <span className="font-bold text-gray-800">{req.reward.toLocaleString()}원</span>
-                  </div>
-
-                  {req.status === WalkStatus.MATCHED && (
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleComplete(req.id)}
-                        className="flex-grow py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all shadow-md shadow-green-100"
-                      >
-                        산책 완료 처리
-                      </button>
-                    </div>
-                  )}
-                  {req.status === WalkStatus.COMPLETED && (
-                    <div className="text-center py-2 text-green-600 text-sm font-semibold border border-green-200 bg-green-50 rounded-lg">
-                      <i className="fas fa-check-circle mr-1"></i> 정산이 완료된 산책입니다.
-                    </div>
-                  )}
+                  <button 
+                    onClick={() => handleComplete(req.id)}
+                    className="w-full py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-2xl transition-all"
+                  >
+                    산책 완료 처리하기
+                  </button>
                 </div>
-              );
+              )
             })
           )}
-        </div>
-      )}
+        </section>
+
+        {/* 3. 추천 산책 (Open) */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <i className="fas fa-search-location text-orange-400"></i>
+              실시간 동네 산책
+            </h2>
+            <Link to="/list" className="text-sm text-slate-400 hover:text-slate-600">전체보기 <i className="fas fa-chevron-right text-[10px]"></i></Link>
+          </div>
+          {availableRequests.length === 0 ? (
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl py-12 text-center">
+              <p className="text-slate-400 font-medium">근처에 새로운 공고가 없습니다.</p>
+            </div>
+          ) : (
+            availableRequests.slice(0, 3).map(req => {
+              const dog = dogs.find(d => d.id === req.dogId);
+              const isApplied = myApplications.some(a => a.requestId === req.id);
+              return (
+                <div key={req.id} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 font-black">
+                      {dog?.name[0]}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800">{dog?.name} ({dog?.breed})</h4>
+                      <p className="text-xs text-slate-400">{req.duration}분 · {req.reward.toLocaleString()}원</p>
+                    </div>
+                  </div>
+                  <button 
+                    disabled={isApplied}
+                    onClick={() => handleApply(req.id)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isApplied ? 'bg-slate-100 text-slate-400' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}
+                  >
+                    {isApplied ? '지원됨' : '지원'}
+                  </button>
+                </div>
+              )
+            })
+          )}
+        </section>
+      </div>
     </div>
   );
 };
