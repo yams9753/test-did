@@ -47,7 +47,6 @@ function App() {
 
   const fetchApplications = async () => {
     try {
-      // profiles 테이블을 walker_id 컬럼을 통해 조인하며 'walker'라는 별칭 부여
       const { data, error } = await supabase
         .from('applications')
         .select(`
@@ -176,8 +175,18 @@ function App() {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setCurrentUser(null);
+    try {
+      setLoading(true);
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      setDogs([]);
+      setRequests([]);
+      setApplications([]);
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRefresh = async () => {
@@ -190,7 +199,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500 font-bold">정보를 불러오는 중...</p>
+          <p className="text-slate-500 font-bold">처리 중...</p>
         </div>
       </div>
     );
@@ -227,7 +236,7 @@ function App() {
                   dogs={dogs}
                   allUsers={[]} 
                   onRefresh={handleRefresh}
-                /> : <Navigate to="/" />
+                /> : <Navigate to="/" replace />
               } 
             />
             
@@ -243,22 +252,22 @@ function App() {
                   setRequests={setRequests}
                   dogs={dogs}
                   onRefresh={handleRefresh}
-                /> : <Navigate to="/" />
+                /> : <Navigate to="/" replace />
               } 
             />
 
-            <Route path="/request/new" element={currentUser?.role === Role.OWNER ? <RequestCreate user={currentUser} dogs={dogs} onSuccess={fetchRequests} /> : <Navigate to="/" />} />
+            <Route path="/request/new" element={currentUser?.role === Role.OWNER ? <RequestCreate user={currentUser} dogs={dogs} onSuccess={fetchRequests} /> : <Navigate to="/" replace />} />
             <Route 
               path="/dog/new" 
               element={
                 currentUser?.role === Role.OWNER 
                 ? <DogCreate user={currentUser} onSuccess={() => fetchDogs(currentUser.id)} /> 
-                : <Navigate to="/" />
+                : <Navigate to="/" replace />
               } 
             />
-            <Route path="/profile" element={currentUser ? <Profile user={currentUser} onLogout={handleLogout} onUpdate={fetchProfile} /> : <Navigate to="/" />} />
-            <Route path="/list" element={currentUser ? <WalkListPage user={currentUser} requests={requests} applications={applications} dogs={dogs} setRequests={setRequests} /> : <Navigate to="/" />} />
-            <Route path="/history" element={currentUser ? <HistoryPage user={currentUser} requests={requests} applications={applications} dogs={dogs} /> : <Navigate to="/" />} />
+            <Route path="/profile" element={currentUser ? <Profile user={currentUser} onLogout={handleLogout} onUpdate={fetchProfile} /> : <Navigate to="/" replace />} />
+            <Route path="/list" element={currentUser ? <WalkListPage user={currentUser} requests={requests} applications={applications} dogs={dogs} setRequests={setRequests} /> : <Navigate to="/" replace />} />
+            <Route path="/history" element={currentUser ? <HistoryPage user={currentUser} requests={requests} applications={applications} dogs={dogs} /> : <Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>

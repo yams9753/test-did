@@ -22,7 +22,7 @@ const WalkListPage: React.FC<Props> = ({ user, requests, applications, dogs }) =
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-black text-slate-800">
-        {user.role === Role.OWNER ? '내 산책 공고 목록' : '내 산책 일정'}
+        예정된 산책
       </h1>
 
       <div className="grid gap-4">

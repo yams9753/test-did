@@ -3,6 +3,13 @@ import React, { useState } from 'react';
 import { supabase } from '../supabase.ts';
 import { Role } from '../types.ts';
 
+// 포트원 전역 객체 타입 정의
+declare global {
+  interface Window {
+    IMP: any;
+  }
+}
+
 interface Props {
   onLogin: (userId: string) => Promise<void>;
 }
@@ -16,34 +23,50 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
   const [role, setRole] = useState<Role>(Role.OWNER);
   const [loading, setLoading] = useState(false);
 
-  // 휴대폰 인증 관련 상태
+  // 본인인증 관련 상태
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [isCodeSent, setIsCodeSent] = useState(false);
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [impUid, setImpUid] = useState(''); // 서버 검증용 UID
 
-  const handleSendCode = () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
-      alert('올바른 휴대폰 번호를 입력해 주세요.');
+  const handleRealVerification = () => {
+    const { IMP } = window;
+    if (!IMP) {
+      alert('인증 모듈을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
       return;
     }
-    setVerifying(true);
-    // 시뮬레이션: 1초 후 인증번호 발송 완료 처리
-    setTimeout(() => {
-      setIsCodeSent(true);
-      setVerifying(false);
-      console.log('인증번호 "123456"이 발송되었습니다.'); // 테스트용
-    }, 1000);
-  };
 
-  const handleVerifyCode = () => {
-    if (verificationCode === '123456') { // 테스트용 고정 코드
-      setIsPhoneVerified(true);
-      alert('본인인증이 완료되었습니다.');
-    } else {
-      alert('인증번호가 일치하지 않습니다. (테스트 번호: 123456)');
-    }
+    // 포트원 초기화 (내 식별코드 입력 필요)
+    // 실제 서비스시에는 본인의 식별코드를 넣어야 합니다.
+    IMP.init("imp00000000"); 
+
+    setVerifying(true);
+
+    // 본인인증 실행
+    IMP.certification({
+      pg: 'inicis_unified', // 또는 'danal' 등 설정한 PG사
+      merchant_uid: `mid_${new Date().getTime()}`, // 주문번호 (임의 생성)
+      m_redirect_url: window.location.href, // 모바일 환경에서 리다이렉트 될 URL
+      popup: true // PC 환경에서 팝업 사용 여부
+    }, async (rsp: any) => {
+      if (rsp.success) {
+        // 인증 성공 시
+        setImpUid(rsp.imp_uid);
+        
+        // 1. (실제 운영 시) 이 단계에서 imp_uid를 서버(Supabase Edge Function 등)로 보내 
+        // 포트원 API를 통해 실제 이름, 전화번호, 생년월일을 가져와야 합니다.
+        // 여기서는 성공한 것으로 간주하고 시뮬레이션합니다.
+        
+        console.log('인증 성공 imp_uid:', rsp.imp_uid);
+        setIsPhoneVerified(true);
+        setVerifying(false);
+        alert('본인인증이 성공적으로 완료되었습니다.');
+      } else {
+        // 인증 실패 시
+        setVerifying(false);
+        alert(`인증에 실패했습니다: ${rsp.error_msg}`);
+      }
+    });
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -74,7 +97,12 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
           email: email.trim().toLowerCase(),
           password,
           options: {
-            data: { nickname: nickname.trim(), role, phone: phoneNumber }
+            data: { 
+              nickname: nickname.trim(), 
+              role, 
+              phone_verified: true,
+              imp_uid: impUid // 추후 관리를 위해 저장
+            }
           }
         });
         
@@ -153,42 +181,28 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
               <input type="text" placeholder="닉네임 (2자 이상)" value={nickname} onChange={(e) => setNickname(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium" />
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-400 ml-1 uppercase">휴대폰 본인인증</label>
-                <div className="flex gap-2">
-                  <input 
-                    type="tel" 
-                    placeholder="휴대폰 번호 (-없이)" 
-                    value={phoneNumber} 
-                    disabled={isPhoneVerified}
-                    onChange={(e) => setPhoneNumber(e.target.value)} 
-                    className="flex-grow p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium" 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={handleSendCode}
-                    disabled={isPhoneVerified || verifying}
-                    className="px-4 bg-slate-800 text-white rounded-2xl text-xs font-bold whitespace-nowrap disabled:opacity-50"
-                  >
-                    {isCodeSent ? '재발송' : '인증요청'}
-                  </button>
-                </div>
-                {isCodeSent && !isPhoneVerified && (
-                  <div className="flex gap-2 animate-fadeIn">
-                    <input 
-                      type="text" 
-                      placeholder="인증번호 6자리" 
-                      value={verificationCode} 
-                      onChange={(e) => setVerificationCode(e.target.value)} 
-                      className="flex-grow p-4 bg-orange-50 border border-orange-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-bold text-orange-600" 
-                    />
-                    <button type="button" onClick={handleVerifyCode} className="px-6 bg-orange-500 text-white rounded-2xl text-xs font-bold">확인</button>
-                  </div>
-                )}
-                {isPhoneVerified && (
-                  <p className="text-xs text-green-600 font-bold ml-1 flex items-center gap-1">
-                    <i className="fas fa-check-circle"></i> 인증이 완료되었습니다.
-                  </p>
-                )}
+                <label className="block text-xs font-bold text-slate-400 ml-1 uppercase">본인 확인</label>
+                <button 
+                  type="button" 
+                  onClick={handleRealVerification}
+                  disabled={isPhoneVerified || verifying}
+                  className={`w-full p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all border-2 ${
+                    isPhoneVerified 
+                    ? 'bg-green-50 border-green-200 text-green-600' 
+                    : 'bg-white border-orange-200 text-orange-600 hover:bg-orange-50'
+                  }`}
+                >
+                  {verifying ? (
+                    <i className="fas fa-spinner animate-spin"></i>
+                  ) : isPhoneVerified ? (
+                    <><i className="fas fa-check-circle"></i> 본인인증 완료</>
+                  ) : (
+                    <><i className="fas fa-mobile-alt"></i> 휴대폰 본인인증 하기</>
+                  )}
+                </button>
+                <p className="text-[10px] text-slate-400 text-center mt-1">
+                  통신사(SKT, KT, LG U+)를 통한 안전한 본인인증을 진행합니다.
+                </p>
               </div>
             </>
           )}

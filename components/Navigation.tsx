@@ -17,7 +17,7 @@ const Navigation: React.FC<Props> = ({ user, onLogout }) => {
   const menuItems = [
     { label: '홈', to: user.role === Role.OWNER ? '/owner' : '/walker', icon: 'fa-home' },
     { label: '신청 내역', to: '/history', icon: 'fa-clipboard-list' },
-    { label: '산책 목록', to: '/list', icon: 'fa-dog' },
+    { label: '예정된 산책', to: '/list', icon: 'fa-dog' },
     { label: '마이페이지', to: '/profile', icon: 'fa-user' },
   ];
 
@@ -87,7 +87,7 @@ const Navigation: React.FC<Props> = ({ user, onLogout }) => {
 
             <button 
               onClick={onLogout}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+              className="hidden md:flex w-10 h-10 rounded-full items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
               title="로그아웃"
             >
               <i className="fas fa-sign-out-alt"></i>
@@ -97,20 +97,27 @@ const Navigation: React.FC<Props> = ({ user, onLogout }) => {
       </div>
 
       {/* Mobile Menu (Visible on Small Screens) */}
-      <div className="md:hidden border-t border-slate-50 flex justify-around py-3 bg-white/50">
+      <div className="md:hidden border-t border-slate-50 flex justify-around py-3 bg-white fixed bottom-0 left-0 right-0 z-50">
         {menuItems.map((item) => {
           const isActive = path === item.to;
           return (
             <Link
               key={item.label}
               to={item.to}
-              className={`flex flex-col items-center gap-1 ${isActive ? 'text-orange-500' : 'text-slate-400'}`}
+              className={`flex flex-col items-center gap-1 py-1 px-3 ${isActive ? 'text-orange-500' : 'text-slate-400'}`}
             >
               <i className={`fas ${item.icon} text-lg`}></i>
               <span className="text-[9px] font-bold">{item.label}</span>
             </Link>
           );
         })}
+        <button
+          onClick={onLogout}
+          className="flex flex-col items-center gap-1 py-1 px-3 text-slate-400 hover:text-red-500"
+        >
+          <i className="fas fa-sign-out-alt text-lg"></i>
+          <span className="text-[9px] font-bold">로그아웃</span>
+        </button>
       </div>
     </nav>
   );
