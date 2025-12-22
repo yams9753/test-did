@@ -33,12 +33,16 @@ const WalkListPage: React.FC<Props> = ({ user, requests, applications, dogs }) =
           </div>
         ) : (
           filteredRequests.map(req => {
-            const dog = dogs.find(d => d.id === req.dogId);
+            const dog = req.dog;
             return (
               <div key={req.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl">
-                    🐶
+                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-2xl overflow-hidden shrink-0">
+                    {dog?.imageUrl ? (
+                      <img src={dog.imageUrl} alt={dog?.name} className="w-full h-full object-cover" />
+                    ) : (
+                      '🐶'
+                    )}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">

@@ -75,9 +75,13 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
           }
 
           if (authData.session) {
+            // 이메일 인증이 꺼져있어 바로 세션이 생기는 경우
             await onLogin(authData.user.id);
           } else {
-            alert('회원가입 신청이 완료되었습니다! \n\n중요: 입력하신 메일함에서 인증 링크를 클릭해야 로그인이 가능할 수 있습니다. 메일이 오지 않았다면 스팸함을 확인해 주세요.');
+            // 이메일 인증이 필요한 경우
+            alert('회원가입 신청이 완료되었습니다! \n\n중요: 입력하신 이메일의 메일함에서 인증 링크를 클릭해야 로그인이 가능합니다. 인증 후 로그인 탭에서 다시 로그인해 주세요.');
+            // 가입 정보 유지하되 비밀번호만 비우고 로그인 탭으로 전환
+            setPassword('');
             setIsSignUp(false);
           }
         }
@@ -92,7 +96,7 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
           console.error('Detailed Login Error:', error);
           
           if (error.message.includes('Invalid login credentials')) {
-            throw new Error('이메일 또는 비밀번호가 올바르지 않습니다. \n\n확인사항:\n1. 오타가 없는지 다시 확인해 주세요.\n2. 아직 가입 전이라면 [회원가입]을 먼저 해주세요.\n3. 방금 가입했다면 메일함에서 인증을 완료했는지 확인해 주세요.');
+            throw new Error('이메일 또는 비밀번호가 올바르지 않습니다. \n\n1. 오타가 없는지 확인해 주세요. \n2. 가입한 적이 없다면 [회원가입] 탭을 이용해 주세요. \n3. 이메일 인증을 완료했는지 확인해 주세요.');
           } else if (error.message.includes('Email not confirmed')) {
             throw new Error('이메일 인증이 완료되지 않았습니다. 메일함의 인증 링크를 클릭한 후 다시 시도해 주세요.');
           }
@@ -124,14 +128,20 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
         <div className="flex mb-8 bg-slate-100 p-1.5 rounded-2xl">
           <button 
             type="button"
-            onClick={() => setIsSignUp(false)}
+            onClick={() => {
+              setIsSignUp(false);
+              setPassword('');
+            }}
             className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${!isSignUp ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-400'}`}
           >
             로그인
           </button>
           <button 
             type="button"
-            onClick={() => setIsSignUp(true)}
+            onClick={() => {
+              setIsSignUp(true);
+              setPassword('');
+            }}
             className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${isSignUp ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-400'}`}
           >
             회원가입
@@ -215,18 +225,6 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
             비밀번호를 잊으셨나요? <span className="underline cursor-pointer hover:text-slate-600">재설정 링크 받기</span>
           </p>
         )}
-      </div>
-
-      {/* 도움말 안내 박스 */}
-      <div className="mt-8 p-5 bg-orange-50/50 rounded-3xl border border-orange-100 max-w-md w-full">
-        <h4 className="text-xs font-black text-orange-800 mb-2 flex items-center gap-1.5">
-          <i className="fas fa-info-circle"></i> 로그인/회원가입이 안 되시나요?
-        </h4>
-        <ul className="text-[11px] text-orange-700/80 font-medium space-y-1.5 leading-relaxed">
-          <li>• Supabase 설정에서 <span className="font-bold">이메일 인증</span>이 활성화되어 있으면, 가입 후 받은 메일의 링크를 꼭 클릭해야 로그인이 가능합니다.</li>
-          <li>• 비밀번호는 최소 6자 이상이며, 대소문자를 구분합니다.</li>
-          <li>• 네트워크 오류 시 브라우저를 새로고침(F5) 해보세요.</li>
-        </ul>
       </div>
     </div>
   );

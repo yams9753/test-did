@@ -37,6 +37,7 @@ export interface Dog {
   breed: string;
   size: Size;
   notes?: string;
+  imageUrl?: string;
 }
 
 export interface WalkRequest {

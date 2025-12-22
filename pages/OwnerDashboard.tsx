@@ -46,16 +46,20 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, a
           <Link to="/dog/new" className="text-sm font-bold text-orange-500 hover:underline">추가 등록</Link>
         </div>
         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-          {dogs.filter(d => d.ownerId === user.id).length === 0 ? (
+          {dogs.length === 0 ? (
             <div className="w-full bg-white p-10 rounded-3xl border border-dashed border-slate-200 text-center">
               <p className="text-slate-400 mb-4">등록된 반려견이 없습니다.</p>
               <Link to="/dog/new" className="text-orange-500 font-bold border border-orange-500 px-4 py-2 rounded-xl">첫 반려견 등록하기</Link>
             </div>
           ) : (
-            dogs.filter(d => d.ownerId === user.id).map(dog => (
+            dogs.map(dog => (
               <div key={dog.id} className="min-w-[280px] bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group hover:border-orange-200 transition-colors">
-                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                  🐶
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+                  {dog.imageUrl ? (
+                    <img src={dog.imageUrl} alt={dog.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-3xl">🐶</span>
+                  )}
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800 text-lg">{dog.name}</h3>
@@ -83,17 +87,21 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, a
             </div>
           ) : (
             matchedRequests.map(req => {
-              const dog = dogs.find(d => d.id === req.dogId);
+              const dog = req.dog;
               const app = applications.find(a => a.requestId === req.id && a.status === 'ACCEPTED');
-              const walker = allUsers.find(u => u.id === app?.walkerId);
+              // walker 정보는 추후 DB에서 가져오도록 확장 필요
               return (
                 <div key={req.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4 relative overflow-hidden group">
                   <div className="absolute top-0 right-0 p-3">
                     <StatusBadge status={req.status} />
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">
-                      <i className="fas fa-walking text-xl"></i>
+                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 overflow-hidden">
+                      {dog?.imageUrl ? (
+                        <img src={dog.imageUrl} alt={dog?.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <i className="fas fa-walking text-xl"></i>
+                      )}
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-800">{dog?.name}의 산책이 예정됨</h4>
@@ -105,7 +113,7 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, a
                       <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-slate-400 border border-slate-200">
                         <i className="fas fa-user text-xs"></i>
                       </div>
-                      <span className="text-sm font-bold text-slate-700">{walker?.nickname} 산책러</span>
+                      <span className="text-sm font-bold text-slate-700">매칭된 산책러</span>
                     </div>
                     <button className="text-blue-500 font-bold text-sm">채팅하기</button>
                   </div>
@@ -129,14 +137,18 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, a
               <p className="text-slate-400 font-medium">대기 중인 공고가 없습니다.</p>
             </div>
           ) : (
-            openRequests.slice(0, 2).map(req => {
-              const dog = dogs.find(d => d.id === req.dogId);
+            openRequests.slice(0, 3).map(req => {
+              const dog = req.dog;
               const reqApps = applications.filter(a => a.requestId === req.id);
               return (
                 <div key={req.id} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center group hover:bg-slate-50 transition-colors">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 font-black">
-                      {dog?.name[0]}
+                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 font-black overflow-hidden shrink-0">
+                      {dog?.imageUrl ? (
+                        <img src={dog.imageUrl} alt={dog?.name} className="w-full h-full object-cover" />
+                      ) : (
+                        dog?.name ? dog.name[0] : '?'
+                      )}
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-800">{dog?.name} · {req.duration}분</h4>

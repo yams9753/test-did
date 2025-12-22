@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, WalkRequest, Application, WalkStatus, Dog } from '../types.ts';
+import { User, WalkRequest, Application, WalkStatus, Dog, ApplicationStatus } from '../types.ts';
+import { supabase } from '../supabase.ts';
 import StatusBadge from '../components/StatusBadge.tsx';
 
 interface Props {
@@ -11,41 +12,65 @@ interface Props {
   setApplications: React.Dispatch<React.SetStateAction<Application[]>>;
   setRequests: React.Dispatch<React.SetStateAction<WalkRequest[]>>;
   dogs: Dog[];
+  onRefresh: () => Promise<void>;
 }
 
-const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, setApplications, setRequests, dogs }) => {
+const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, setApplications, setRequests, dogs, onRefresh }) => {
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
   const myApplications = applications.filter(a => a.walkerId === user.id);
   const myMatchedWalks = requests.filter(req => 
-    myApplications.some(a => a.requestId === req.id && a.status === 'ACCEPTED' && req.status === WalkStatus.MATCHED)
+    myApplications.some(a => a.requestId === req.id && a.status === ApplicationStatus.ACCEPTED && req.status === WalkStatus.MATCHED)
   );
   const availableRequests = requests.filter(r => r.status === WalkStatus.OPEN && r.ownerId !== user.id);
   const completedWalks = requests.filter(req => 
-    myApplications.some(a => a.requestId === req.id && a.status === 'ACCEPTED' && req.status === WalkStatus.COMPLETED)
+    myApplications.some(a => a.requestId === req.id && a.status === ApplicationStatus.ACCEPTED && req.status === WalkStatus.COMPLETED)
   );
 
   const totalEarnings = completedWalks.reduce((acc, curr) => acc + curr.reward, 0);
 
-  const handleApply = (requestId: string) => {
+  const handleApply = async (requestId: string) => {
     if (myApplications.some(a => a.requestId === requestId)) {
       alert('이미 지원한 산책입니다.');
       return;
     }
-    const newApp: Application = {
-      id: `app_${Date.now()}`,
-      requestId,
-      walkerId: user.id,
-      status: 'PENDING' as any,
-      createdAt: new Date().toISOString()
-    };
-    setApplications(prev => [...prev, newApp]);
-    alert('지원 완료! 견주님의 선택을 기다려주세요.');
+
+    setLoadingId(requestId);
+    try {
+      const { error } = await supabase
+        .from('applications')
+        .insert({
+          request_id: requestId,
+          walker_id: user.id,
+          status: ApplicationStatus.PENDING
+        });
+
+      if (error) throw error;
+
+      alert('지원 완료! 견주님의 선택을 기다려주세요.');
+      await onRefresh();
+    } catch (error: any) {
+      console.error('Apply error:', error);
+      alert('지원에 실패했습니다: ' + (error.message || '오류 발생'));
+    } finally {
+      setLoadingId(null);
+    }
   };
 
-  const handleComplete = (requestId: string) => {
-    setRequests(prev => prev.map(req => 
-      req.id === requestId ? { ...req, status: WalkStatus.COMPLETED } : req
-    ));
-    alert('산책 완료! 정산이 진행됩니다.');
+  const handleComplete = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('walk_requests')
+        .update({ status: WalkStatus.COMPLETED })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      alert('산책 완료! 정산이 진행됩니다.');
+      await onRefresh();
+    } catch (error: any) {
+      alert('상태 업데이트 실패: ' + error.message);
+    }
   };
 
   return (
@@ -83,12 +108,18 @@ const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, setApp
             </div>
           ) : (
             myMatchedWalks.map(req => {
-              const dog = dogs.find(d => d.id === req.dogId);
+              const dog = req.dog;
               return (
                 <div key={req.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
                   <div className="flex justify-between items-start">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-2xl">🐶</div>
+                      <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-2xl overflow-hidden shrink-0">
+                        {dog?.imageUrl ? (
+                          <img src={dog.imageUrl} alt={dog?.name} className="w-full h-full object-cover" />
+                        ) : (
+                          '🐶'
+                        )}
+                      </div>
                       <div>
                         <h4 className="font-bold text-slate-800">{dog?.name} · {req.duration}분</h4>
                         <p className="text-sm text-slate-500">{new Date(req.scheduledAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
@@ -122,26 +153,30 @@ const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, setApp
               <p className="text-slate-400 font-medium">근처에 새로운 공고가 없습니다.</p>
             </div>
           ) : (
-            availableRequests.slice(0, 3).map(req => {
-              const dog = dogs.find(d => d.id === req.dogId);
+            availableRequests.slice(0, 5).map(req => {
+              const dog = req.dog;
               const isApplied = myApplications.some(a => a.requestId === req.id);
               return (
                 <div key={req.id} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center group">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 font-black">
-                      {dog?.name[0]}
+                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 font-black overflow-hidden shrink-0">
+                      {dog?.imageUrl ? (
+                        <img src={dog.imageUrl} alt={dog?.name} className="w-full h-full object-cover" />
+                      ) : (
+                        dog?.name ? dog.name[0] : '?'
+                      )}
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-800">{dog?.name} ({dog?.breed})</h4>
+                      <h4 className="font-bold text-slate-800">{dog?.name} ({dog?.breed || '견종 미지정'})</h4>
                       <p className="text-xs text-slate-400">{req.duration}분 · {req.reward.toLocaleString()}원</p>
                     </div>
                   </div>
                   <button 
-                    disabled={isApplied}
+                    disabled={isApplied || loadingId === req.id}
                     onClick={() => handleApply(req.id)}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${isApplied ? 'bg-slate-100 text-slate-400' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'}`}
                   >
-                    {isApplied ? '지원됨' : '지원'}
+                    {loadingId === req.id ? <i className="fas fa-spinner animate-spin"></i> : (isApplied ? '지원됨' : '지원')}
                   </button>
                 </div>
               )

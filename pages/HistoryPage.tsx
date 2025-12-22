@@ -31,13 +31,17 @@ const HistoryPage: React.FC<Props> = ({ user, requests, applications, dogs }) =>
           </div>
         ) : (
           completedRequests.map(req => {
-            const dog = dogs.find(d => d.id === req.dogId);
+            const dog = req.dog;
             return (
               <div key={req.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm group hover:border-slate-300 transition-all">
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-xl grayscale group-hover:grayscale-0 transition-all">
-                      🦴
+                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-xl overflow-hidden shrink-0">
+                      {dog?.imageUrl ? (
+                        <img src={dog.imageUrl} alt={dog?.name} className="w-full h-full object-cover" />
+                      ) : (
+                        '🦴'
+                      )}
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-700">{dog?.name}와의 산책</h3>
