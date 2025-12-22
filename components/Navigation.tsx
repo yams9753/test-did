@@ -77,13 +77,13 @@ const Navigation: React.FC<Props> = ({ user, onLogout }) => {
               </span>
             </div>
             
-            <div className="group relative">
-              <button className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:bg-orange-50 transition-all">
-                <i className="fas fa-user-circle text-xl"></i>
-              </button>
-              
-              {/* Simple Tooltip-style dropdown on hover or click would go here */}
-            </div>
+            <Link 
+              to="/profile" 
+              className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:border-orange-300 hover:bg-orange-50 transition-all"
+              title="마이페이지"
+            >
+              <i className="fas fa-user-circle text-xl"></i>
+            </Link>
 
             <button 
               onClick={onLogout}

@@ -43,23 +43,30 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, a
             <i className="fas fa-dog text-orange-400"></i>
             내 반려견 정보
           </h2>
-          <button className="text-sm font-bold text-orange-500 hover:underline">추가 등록</button>
+          <Link to="/dog/new" className="text-sm font-bold text-orange-500 hover:underline">추가 등록</Link>
         </div>
         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-          {dogs.filter(d => d.ownerId === user.id).map(dog => (
-            <div key={dog.id} className="min-w-[280px] bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group hover:border-orange-200 transition-colors">
-              <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
-                🐶
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-800 text-lg">{dog.name}</h3>
-                <p className="text-sm text-slate-400">{dog.breed} · {dog.size}형견</p>
-                <div className="mt-2 text-[10px] bg-orange-50 text-orange-600 px-2 py-1 rounded-full font-bold inline-block">
-                  {dog.notes || '착한 아이에요'}
+          {dogs.filter(d => d.ownerId === user.id).length === 0 ? (
+            <div className="w-full bg-white p-10 rounded-3xl border border-dashed border-slate-200 text-center">
+              <p className="text-slate-400 mb-4">등록된 반려견이 없습니다.</p>
+              <Link to="/dog/new" className="text-orange-500 font-bold border border-orange-500 px-4 py-2 rounded-xl">첫 반려견 등록하기</Link>
+            </div>
+          ) : (
+            dogs.filter(d => d.ownerId === user.id).map(dog => (
+              <div key={dog.id} className="min-w-[280px] bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group hover:border-orange-200 transition-colors">
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                  🐶
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-lg">{dog.name}</h3>
+                  <p className="text-sm text-slate-400">{dog.breed} · {dog.size}형견</p>
+                  <div className="mt-2 text-[10px] bg-orange-50 text-orange-600 px-2 py-1 rounded-full font-bold inline-block">
+                    {dog.notes || '착한 아이에요'}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 
