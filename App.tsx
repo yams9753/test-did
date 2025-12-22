@@ -47,12 +47,12 @@ function App() {
 
   const fetchApplications = async () => {
     try {
-      // profiles와 join하여 산책러 닉네임 등을 함께 가져옴
+      // profiles 테이블을 walker_id 컬럼을 통해 조인하며 'walker'라는 별칭 부여
       const { data, error } = await supabase
         .from('applications')
         .select(`
           *,
-          profiles:walker_id (id, nickname, trust_score, role)
+          walker:profiles!walker_id (id, nickname, trust_score, role)
         `)
         .order('created_at', { ascending: false });
 
@@ -64,12 +64,12 @@ function App() {
         walkerId: a.walker_id,
         status: a.status as ApplicationStatus,
         createdAt: a.created_at,
-        walker: a.profiles ? {
-          id: a.profiles.id,
-          nickname: a.profiles.nickname,
-          trustScore: a.profiles.trust_score,
-          role: a.profiles.role as Role,
-          regionCode: '' // 필요한 경우 profiles 테이블 구성에 따라 추가
+        walker: a.walker ? {
+          id: a.walker.id,
+          nickname: a.walker.nickname,
+          trustScore: a.walker.trust_score,
+          role: a.walker.role as Role,
+          regionCode: ''
         } : undefined
       }));
 
@@ -133,40 +133,11 @@ function App() {
           regionCode: data.region_code || '미지정',
           trustScore: Number(data.trust_score) || 36.5
         });
-        await fetchDogs(userId);
-        await fetchRequests();
-        await fetchApplications();
-      } else if (error && (error.code === 'PGRST116' || error.message.includes('No rows found'))) {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user) {
-          const defaultNickname = userData.user.user_metadata?.nickname || '회원';
-          const defaultRole = userData.user.user_metadata?.role || Role.OWNER;
-          
-          const { data: newProfile, error: insertError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: userId,
-              nickname: defaultNickname,
-              role: defaultRole,
-              region_code: '미지정',
-              trust_score: 36.5
-            })
-            .select()
-            .single();
-
-          if (newProfile && !insertError) {
-            setCurrentUser({
-              id: newProfile.id,
-              nickname: newProfile.nickname,
-              role: newProfile.role as Role,
-              regionCode: newProfile.region_code || '미지정',
-              trustScore: 36.5
-            });
-            await fetchDogs(userId);
-            await fetchRequests();
-            await fetchApplications();
-          }
-        }
+        await Promise.all([
+          fetchDogs(userId),
+          fetchRequests(),
+          fetchApplications()
+        ]);
       }
     } catch (e) {
       console.error('Fetch profile failed:', e);
@@ -219,7 +190,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500 font-bold">로딩 중...</p>
+          <p className="text-slate-500 font-bold">정보를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -227,7 +198,7 @@ function App() {
 
   return (
     <HashRouter>
-      <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="min-h-screen bg-slate-50 flex flex-col pb-20">
         <Navigation user={currentUser} onLogout={handleLogout} />
         
         <main className="flex-grow container mx-auto px-4 py-8 max-w-5xl">
@@ -255,6 +226,7 @@ function App() {
                   setApplications={setApplications}
                   dogs={dogs}
                   allUsers={[]} 
+                  onRefresh={handleRefresh}
                 /> : <Navigate to="/" />
               } 
             />
