@@ -16,6 +16,7 @@ import DogCreate from './pages/DogCreate.tsx';
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [requests, setRequests] = useState<WalkRequest[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [dogs, setDogs] = useState<Dog[]>([]);
@@ -29,7 +30,7 @@ function App() {
 
       if (error) throw error;
       
-      const mappedDogs: Dog[] = data.map(d => ({
+      const mappedDogs: Dog[] = (data || []).map(d => ({
         id: d.id,
         ownerId: d.owner_id,
         name: d.name,
@@ -57,7 +58,7 @@ function App() {
 
       if (error) throw error;
 
-      const mappedApps: Application[] = data.map(a => ({
+      const mappedApps: Application[] = (data || []).map(a => ({
         id: a.id,
         requestId: a.request_id,
         walkerId: a.walker_id,
@@ -90,7 +91,7 @@ function App() {
 
       if (error) throw error;
 
-      const mappedRequests: WalkRequest[] = data.map(r => ({
+      const mappedRequests: WalkRequest[] = (data || []).map(r => ({
         id: r.id,
         ownerId: r.owner_id,
         dogId: r.dog_id,
@@ -122,7 +123,7 @@ function App() {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (data && !error) {
         setCurrentUser({
@@ -132,7 +133,7 @@ function App() {
           regionCode: data.region_code || '미지정',
           trustScore: Number(data.trust_score) || 36.5
         });
-        await Promise.all([
+        await Promise.allSettled([
           fetchDogs(userId),
           fetchRequests(),
           fetchApplications()
@@ -144,54 +145,74 @@ function App() {
   };
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await fetchProfile(session.user.id);
-      } else {
-        await fetchRequests();
-        await fetchApplications();
+    let mounted = true;
+
+    // 타임아웃 세이프가드
+    const timer = setTimeout(() => {
+      if (mounted && loading) {
+        setLoading(false);
       }
-      setLoading(false);
+    }, 4000);
+
+    const checkUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && mounted) {
+          await fetchProfile(session.user.id);
+        } else if (mounted) {
+          await Promise.allSettled([fetchRequests(), fetchApplications()]);
+        }
+      } catch (err) {
+        console.error('Initial check failed:', err);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          clearTimeout(timer);
+        }
+      }
     };
 
     checkUser();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
       if (session) {
         await fetchProfile(session.user.id);
+        setLoading(false);
       } else {
+        // 로그아웃 시 즉시 상태 초기화 및 로딩 해제
         setCurrentUser(null);
         setDogs([]);
         setRequests([]);
         setApplications([]);
-        await fetchRequests();
+        setLoading(false); // <--- 중요: 데이터를 기다리지 않고 즉시 로딩 해제
+        
+        // 백그라운드에서 공고 목록만 새로고침
+        fetchRequests();
+        fetchApplications();
       }
     });
 
     return () => {
+      mounted = false;
+      clearTimeout(timer);
       authListener.subscription.unsubscribe();
     };
   }, []);
 
   const handleLogout = async () => {
     try {
-      setLoading(true);
+      // 수동 로딩 설정을 제거하여 충돌 방지
       await supabase.auth.signOut();
-      setCurrentUser(null);
-      setDogs([]);
-      setRequests([]);
-      setApplications([]);
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
       setLoading(false);
     }
   };
 
   const handleRefresh = async () => {
-    await fetchRequests();
-    await fetchApplications();
+    await Promise.allSettled([fetchRequests(), fetchApplications()]);
   };
 
   if (loading) {
@@ -199,7 +220,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500 font-bold">처리 중...</p>
+          <p className="text-slate-500 font-bold">잠시만 기다려 주세요...</p>
         </div>
       </div>
     );
