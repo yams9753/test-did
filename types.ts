@@ -50,6 +50,9 @@ export interface WalkRequest {
   duration: number;
   reward: number;
   status: WalkStatus;
+  region: string;
+  poopCount: number;
+  peeCount: number;
   createdAt: string;
 }
 
@@ -60,4 +63,13 @@ export interface Application {
   walker?: User;
   status: ApplicationStatus;
   createdAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  requestId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  sender?: User;
 }

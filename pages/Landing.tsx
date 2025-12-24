@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase.ts';
 import { Role } from '../types.ts';
 
@@ -22,12 +22,20 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
   const [nickname, setNickname] = useState('');
   const [role, setRole] = useState<Role>(Role.OWNER);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // 본인인증 관련 상태
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [impUid, setImpUid] = useState(''); // 서버 검증용 UID
+  const [impUid, setImpUid] = useState(''); 
+
+  // 탭 전환 시 에러 메시지 및 입력값 초기화
+  const toggleTab = (signUp: boolean) => {
+    setIsSignUp(signUp);
+    setErrorMessage(null);
+    setEmail('');
+    setPassword('');
+  };
 
   const handleRealVerification = () => {
     const { IMP } = window;
@@ -36,35 +44,22 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
       return;
     }
 
-    // 포트원 초기화 (내 식별코드 입력 필요)
-    // 실제 서비스시에는 본인의 식별코드를 넣어야 합니다.
     IMP.init("imp00000000"); 
-
     setVerifying(true);
 
-    // 본인인증 실행
     IMP.certification({
-      pg: 'inicis_unified', // 또는 'danal' 등 설정한 PG사
-      merchant_uid: `mid_${new Date().getTime()}`, // 주문번호 (임의 생성)
-      m_redirect_url: window.location.href, // 모바일 환경에서 리다이렉트 될 URL
-      popup: true // PC 환경에서 팝업 사용 여부
+      pg: 'inicis_unified',
+      merchant_uid: `mid_${new Date().getTime()}`,
+      popup: true
     }, async (rsp: any) => {
       if (rsp.success) {
-        // 인증 성공 시
         setImpUid(rsp.imp_uid);
-        
-        // 1. (실제 운영 시) 이 단계에서 imp_uid를 서버(Supabase Edge Function 등)로 보내 
-        // 포트원 API를 통해 실제 이름, 전화번호, 생년월일을 가져와야 합니다.
-        // 여기서는 성공한 것으로 간주하고 시뮬레이션합니다.
-        
-        console.log('인증 성공 imp_uid:', rsp.imp_uid);
         setIsPhoneVerified(true);
         setVerifying(false);
-        alert('본인인증이 성공적으로 완료되었습니다.');
+        setErrorMessage(null);
       } else {
-        // 인증 실패 시
         setVerifying(false);
-        alert(`인증에 실패했습니다: ${rsp.error_msg}`);
+        setErrorMessage(`본인인증 실패: ${rsp.error_msg}`);
       }
     });
   };
@@ -72,20 +67,21 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    setErrorMessage(null);
     
     if (isSignUp) {
       if (!nickname || nickname.trim().length < 2) {
-        alert('닉네임을 2자 이상 입력해 주세요.');
+        setErrorMessage('닉네임을 2자 이상 입력해 주세요.');
         return;
       }
       if (!isPhoneVerified) {
-        alert('휴대폰 본인인증을 완료해 주세요.');
+        setErrorMessage('휴대폰 본인인증을 완료해 주세요.');
         return;
       }
     }
     
     if (password.length < 6) {
-      alert('비밀번호는 최소 6자 이상이어야 합니다.');
+      setErrorMessage('비밀번호는 최소 6자 이상이어야 합니다.');
       return;
     }
     
@@ -101,7 +97,7 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
               nickname: nickname.trim(), 
               role, 
               phone_verified: true,
-              imp_uid: impUid // 추후 관리를 위해 저장
+              imp_uid: impUid
             }
           }
         });
@@ -129,11 +125,22 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
           email: email.trim().toLowerCase(),
           password,
         });
-        if (error) throw error;
+        
+        if (error) {
+          // 에러 메시지 한글 변환 로직
+          if (error.message === 'Invalid login credentials') {
+            throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.');
+          } else if (error.message.includes('Email not confirmed')) {
+            throw new Error('이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요.');
+          } else {
+            throw error;
+          }
+        }
+        
         if (data.user) await onLogin(data.user.id);
       }
     } catch (error: any) {
-      alert(error.message || '인증 과정에서 오류가 발생했습니다.');
+      setErrorMessage(error.message || '인증 과정에서 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
@@ -153,14 +160,14 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
         <div className="flex mb-8 bg-slate-100 p-1.5 rounded-2xl">
           <button 
             type="button"
-            onClick={() => setIsSignUp(false)}
+            onClick={() => toggleTab(false)}
             className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${!isSignUp ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-400'}`}
           >
             로그인
           </button>
           <button 
             type="button"
-            onClick={() => setIsSignUp(true)}
+            onClick={() => toggleTab(true)}
             className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${isSignUp ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-400'}`}
           >
             회원가입
@@ -178,7 +185,13 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
                 </div>
               </div>
               
-              <input type="text" placeholder="닉네임 (2자 이상)" value={nickname} onChange={(e) => setNickname(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium" />
+              <input 
+                type="text" 
+                placeholder="닉네임 (2자 이상)" 
+                value={nickname} 
+                onChange={(e) => { setNickname(e.target.value); setErrorMessage(null); }} 
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium" 
+              />
 
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-400 ml-1 uppercase">본인 확인</label>
@@ -200,18 +213,39 @@ const Landing: React.FC<Props> = ({ onLogin }) => {
                     <><i className="fas fa-mobile-alt"></i> 휴대폰 본인인증 하기</>
                   )}
                 </button>
-                <p className="text-[10px] text-slate-400 text-center mt-1">
-                  통신사(SKT, KT, LG U+)를 통한 안전한 본인인증을 진행합니다.
-                </p>
               </div>
             </>
           )}
 
-          <input type="email" placeholder="이메일 주소" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium" required />
+          <input 
+            type="email" 
+            placeholder="이메일 주소" 
+            value={email} 
+            onChange={(e) => { setEmail(e.target.value); setErrorMessage(null); }} 
+            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium" 
+            required 
+          />
           <div className="relative">
-            <input type={showPassword ? "text" : "password"} placeholder="비밀번호" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium" required />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"><i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+            <input 
+              type={showPassword ? "text" : "password"} 
+              placeholder="비밀번호" 
+              value={password} 
+              onChange={(e) => { setPassword(e.target.value); setErrorMessage(null); }} 
+              className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium" 
+              required 
+            />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+            </button>
           </div>
+          
+          {/* 에러 메시지 표시 영역 */}
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-start gap-3 animate-fadeIn">
+              <i className="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
+              <p className="text-xs font-bold text-red-600 leading-normal">{errorMessage}</p>
+            </div>
+          )}
           
           <button type="submit" disabled={loading} className="w-full py-4 bg-orange-500 hover:bg-orange-600 text-white font-black rounded-2xl transition-all shadow-lg text-lg disabled:opacity-50">
             {loading ? <i className="fas fa-spinner animate-spin"></i> : (isSignUp ? '가입 완료하기' : '로그인')}

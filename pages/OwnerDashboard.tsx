@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { User, WalkRequest, Application, WalkStatus, Dog, ApplicationStatus } from '../types.ts';
 import { supabase } from '../supabase.ts';
 import StatusBadge from '../components/StatusBadge.tsx';
@@ -18,6 +18,7 @@ interface Props {
 
 const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, onRefresh }) => {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const ownerRequests = requests.filter(r => r.ownerId === user.id);
   const matchedRequests = ownerRequests.filter(r => r.status === WalkStatus.MATCHED);
@@ -26,7 +27,6 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, o
   const handleAcceptApplication = async (requestId: string, appId: string) => {
     setLoadingId(appId);
     try {
-      // 1. 공고 상태를 MATCHED로 변경
       const { error: reqError } = await supabase
         .from('walk_requests')
         .update({ status: WalkStatus.MATCHED })
@@ -34,7 +34,6 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, o
 
       if (reqError) throw reqError;
 
-      // 2. 해당 지원서는 ACCEPTED로 변경
       const { error: appError } = await supabase
         .from('applications')
         .update({ status: ApplicationStatus.ACCEPTED })
@@ -42,7 +41,6 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, o
 
       if (appError) throw appError;
 
-      // 3. 나머지 지원서는 REJECTED로 변경 (선택사항)
       await supabase
         .from('applications')
         .update({ status: ApplicationStatus.REJECTED })
@@ -145,7 +143,12 @@ const OwnerDashboard: React.FC<Props> = ({ user, requests, applications, dogs, o
                       </div>
                       <span className="text-sm font-bold text-slate-700">{app?.walker?.nickname || '산책러'}님</span>
                     </div>
-                    <button className="text-blue-600 font-black text-xs bg-white px-3 py-1.5 rounded-lg shadow-sm">채팅하기</button>
+                    <button 
+                      onClick={() => navigate(`/chat/${req.id}`)}
+                      className="text-blue-600 font-black text-xs bg-white px-3 py-1.5 rounded-lg shadow-sm hover:bg-blue-50 transition-colors"
+                    >
+                      채팅하기
+                    </button>
                   </div>
                 </div>
               );

@@ -12,6 +12,7 @@ import Profile from './pages/Profile.tsx';
 import WalkListPage from './pages/WalkListPage.tsx';
 import HistoryPage from './pages/HistoryPage.tsx';
 import DogCreate from './pages/DogCreate.tsx';
+import ChatRoom from './pages/ChatRoom.tsx';
 
 function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -99,6 +100,9 @@ function App() {
         duration: r.duration,
         reward: r.reward,
         status: r.status as WalkStatus,
+        region: r.region || '미지정',
+        poopCount: r.poop_count || 0,
+        peeCount: r.pee_count || 0,
         createdAt: r.created_at,
         dog: r.dogs ? {
           id: r.dogs.id,
@@ -147,7 +151,6 @@ function App() {
   useEffect(() => {
     let mounted = true;
 
-    // 타임아웃 세이프가드
     const timer = setTimeout(() => {
       if (mounted && loading) {
         setLoading(false);
@@ -181,14 +184,11 @@ function App() {
         await fetchProfile(session.user.id);
         setLoading(false);
       } else {
-        // 로그아웃 시 즉시 상태 초기화 및 로딩 해제
         setCurrentUser(null);
         setDogs([]);
         setRequests([]);
         setApplications([]);
-        setLoading(false); // <--- 중요: 데이터를 기다리지 않고 즉시 로딩 해제
-        
-        // 백그라운드에서 공고 목록만 새로고침
+        setLoading(false);
         fetchRequests();
         fetchApplications();
       }
@@ -203,7 +203,6 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      // 수동 로딩 설정을 제거하여 충돌 방지
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Logout error:', error);
@@ -277,18 +276,69 @@ function App() {
               } 
             />
 
-            <Route path="/request/new" element={currentUser?.role === Role.OWNER ? <RequestCreate user={currentUser} dogs={dogs} onSuccess={fetchRequests} /> : <Navigate to="/" replace />} />
+            <Route path="/chat/:requestId" element={currentUser ? <ChatRoom user={currentUser} /> : <Navigate to="/" replace />} />
+
+            <Route 
+              path="/request/new" 
+              element={
+                currentUser?.role === Role.OWNER ? 
+                <RequestCreate 
+                  user={currentUser} 
+                  dogs={dogs} 
+                  onSuccess={handleRefresh} 
+                /> : <Navigate to="/" replace />
+              } 
+            />
+
             <Route 
               path="/dog/new" 
               element={
-                currentUser?.role === Role.OWNER 
-                ? <DogCreate user={currentUser} onSuccess={() => fetchDogs(currentUser.id)} /> 
-                : <Navigate to="/" replace />
+                currentUser?.role === Role.OWNER ? 
+                <DogCreate 
+                  user={currentUser} 
+                  onSuccess={() => fetchDogs(currentUser.id)} 
+                /> : <Navigate to="/" replace />
               } 
             />
-            <Route path="/profile" element={currentUser ? <Profile user={currentUser} onLogout={handleLogout} onUpdate={fetchProfile} /> : <Navigate to="/" replace />} />
-            <Route path="/list" element={currentUser ? <WalkListPage user={currentUser} requests={requests} applications={applications} dogs={dogs} setRequests={setRequests} /> : <Navigate to="/" replace />} />
-            <Route path="/history" element={currentUser ? <HistoryPage user={currentUser} requests={requests} applications={applications} dogs={dogs} /> : <Navigate to="/" replace />} />
+
+            <Route 
+              path="/history" 
+              element={
+                currentUser ? 
+                <HistoryPage 
+                  user={currentUser} 
+                  requests={requests} 
+                  applications={applications} 
+                  dogs={dogs} 
+                /> : <Navigate to="/" replace />
+              } 
+            />
+
+            <Route 
+              path="/list" 
+              element={
+                currentUser ? 
+                <WalkListPage 
+                  user={currentUser} 
+                  requests={requests} 
+                  applications={applications} 
+                  dogs={dogs}
+                  setRequests={setRequests}
+                /> : <Navigate to="/" replace />
+              } 
+            />
+
+            <Route 
+              path="/profile" 
+              element={
+                currentUser ? 
+                <Profile 
+                  user={currentUser} 
+                  onLogout={handleLogout} 
+                  onUpdate={fetchProfile} 
+                /> : <Navigate to="/" replace />
+              } 
+            />
           </Routes>
         </main>
       </div>

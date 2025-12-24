@@ -37,14 +37,13 @@ const HistoryPage: React.FC<Props> = ({ user, requests, applications, dogs }) =>
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-xl overflow-hidden shrink-0">
-                      {dog?.imageUrl ? (
-                        <img src={dog.imageUrl} alt={dog?.name} className="w-full h-full object-cover" />
-                      ) : (
-                        '🦴'
-                      )}
+                      {dog?.imageUrl ? <img src={dog.imageUrl} alt={dog?.name} className="w-full h-full object-cover" /> : '🦴'}
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-700">{dog?.name}와의 산책</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-slate-700">{dog?.name}와의 산책</h3>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-slate-50 text-slate-400 rounded border border-slate-100">{req.region}</span>
+                      </div>
                       <p className="text-xs text-slate-400 mt-1">
                         {new Date(req.scheduledAt).toLocaleDateString()} · {req.duration}분 수행
                       </p>
@@ -54,10 +53,6 @@ const HistoryPage: React.FC<Props> = ({ user, requests, applications, dogs }) =>
                     <p className="text-sm font-black text-slate-800">정산 완료</p>
                     <p className="text-xs text-slate-400">+{req.reward.toLocaleString()}원</p>
                   </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-slate-50 flex justify-end gap-2">
-                  <button className="text-[10px] font-bold bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg">리뷰 작성</button>
-                  <button className="text-[10px] font-bold bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg">동일한 조건으로 재예약</button>
                 </div>
               </div>
             );

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { User, WalkRequest, Application, WalkStatus, Dog, ApplicationStatus } from '../types.ts';
 import { supabase } from '../supabase.ts';
 import StatusBadge from '../components/StatusBadge.tsx';
@@ -19,6 +19,7 @@ const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, onRefr
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const myApplications = applications.filter(a => a.walkerId === user.id);
   const myMatchedWalks = requests.filter(req => 
@@ -63,7 +64,7 @@ const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, onRefr
 
       if (error) throw error;
       if (!data || data.length === 0) {
-        alert('업데이트 권한이 없거나 오류가 발생했습니다. DB 설정을 확인해주세요.');
+        alert('업데이트 권한이 없거나 오류가 발생했습니다.');
         return;
       }
       alert('산책 완료 처리가 되었습니다!');
@@ -77,7 +78,6 @@ const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, onRefr
 
   return (
     <div className="space-y-8 relative">
-      {/* Custom Confirm Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl space-y-6">
@@ -96,7 +96,6 @@ const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, onRefr
         </div>
       )}
 
-      {/* 1. Header & Stats */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-800">안녕하세요, {user.nickname} 프로님!</h1>
@@ -129,11 +128,23 @@ const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, onRefr
                       {req.dog?.imageUrl ? <img src={req.dog.imageUrl} className="w-full h-full object-cover" /> : '🐶'}
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-800">{req.dog?.name} · {req.duration}분</h4>
-                      <p className="text-sm text-slate-500">{new Date(req.scheduledAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-slate-800">{req.dog?.name}</h4>
+                        <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full font-bold">{req.region}</span>
+                      </div>
+                      <p className="text-sm text-slate-500">{new Date(req.scheduledAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} · {req.duration}분</p>
                     </div>
                   </div>
-                  <StatusBadge status={req.status} />
+                  <div className="flex flex-col items-end gap-2">
+                    <StatusBadge status={req.status} />
+                    <button 
+                      onClick={() => navigate(`/chat/${req.id}`)}
+                      className="text-[10px] font-black text-orange-500 bg-orange-50 px-2 py-1 rounded-md hover:bg-orange-100 transition-colors"
+                    >
+                      <i className="fas fa-comments mr-1"></i>
+                      채팅하기
+                    </button>
+                  </div>
                 </div>
                 <button 
                   disabled={completingId === req.id}
@@ -152,14 +163,17 @@ const WalkerDashboard: React.FC<Props> = ({ user, requests, applications, onRefr
           {availableRequests.length === 0 ? (
             <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl py-12 text-center text-slate-400">근처에 새로운 공고가 없습니다.</div>
           ) : (
-            availableRequests.slice(0, 5).map(req => (
+            availableRequests.slice(0, 10).map(req => (
               <div key={req.id} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex justify-between items-center group hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-500 font-black overflow-hidden shrink-0">
                     {req.dog?.imageUrl ? <img src={req.dog.imageUrl} className="w-full h-full object-cover" /> : '🐶'}
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-800">{req.dog?.name} ({req.dog?.breed})</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-slate-800">{req.dog?.name}</h4>
+                      <span className="text-[10px] px-2 py-0.5 bg-orange-50 text-orange-600 rounded-md font-bold">{req.region}</span>
+                    </div>
                     <p className="text-xs text-slate-400">{req.duration}분 · {req.reward.toLocaleString()}원</p>
                   </div>
                 </div>
